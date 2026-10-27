@@ -1,0 +1,9 @@
+{
+	"id": "aliases-in-search-results",
+	"name": "Aliases in Search Results",
+	"version": "0.1.0",
+	"minAppVersion": "1.7.0",
+	"description": "Show the aliases of a note next to its filename in the core search results.",
+	"author": "Marcel",
+	"isDesktopOnly": false
+}
