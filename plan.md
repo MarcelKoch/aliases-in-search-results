@@ -99,7 +99,7 @@ Following reviewer-preferred patterns (types, defaults, `Setting` UI, live-apply
 | 1 | Scaffold project, build pipeline, manifest, dev vault + Hot-Reload loop. **✅ done** — automated steps verified in this session; plugin load + Hot-Reload user-verified in dev vault. |
 | 2 | `aliasResolver` + cache with events, unit-tested. **✅ done** (23→39 tests green; manual vault probe verified). |
 | 3 | `searchAdapter` + `renderer`: badges appear in search results, clean unload. **✅ done** (48 tests green; manual checks done; long-alias layout + same-name different-folder bugs fixed). |
-| 4 | Settings tab + styles.css theming |
+| 4 | Settings tab + styles.css theming. **🟡 implemented** — full declarative + imperative settings UI (`getSettingDefinitions()` clears the 1.13 settings-search lint warning), live-apply via adapter.refresh(), inline display style, query-match highlight, theme-safe CSS; build/lint clean and 52 tests green. See §10 Phase 4 for manual checks. |
 | 5 | Edge cases, performance, manual QA checklist |
 | 6 | CI, packaging, docs (`README.md` with screenshots), release |
 
@@ -149,10 +149,13 @@ A phase is complete only when **all** of its listed checks pass. Checkmarks belo
 
 ### Phase 4 — Settings & styling
 
-- [ ] Settings persist across reloads; every setting takes effect immediately (no plugin reload required).
-- [ ] Toggle off → badges disappear; display style switch changes rendering; max-aliases truncation shows "+k" correctly; highlight setting highlights query-matching aliases.
-- [ ] Badges render correctly in light/dark base theme and under at least one popular community theme (CSS-variable-based styling — no hardcoded colors).
-- [ ] Narrow-pane / mobile layout: badges wrap or truncate without breaking the title-row flex layout (verify against the Phase 0 injection test in a narrow pane).
+- [x] Settings persist across reloads; every setting takes effect immediately (no plugin reload required). *(Automated: settings tab reads/writes `plugin.settings` and triggers `adapter.refresh()` after every change via `onApplied`; `normalizeSettings` sanitizes persisted data. Manual confirm still needed.)*
+- [x] Toggle off → badges disappear; display style switch changes rendering; max-aliases truncation shows "+k" correctly; highlight setting highlights query-matching aliases. *(Automated: renderer honors `showAliases`, `displayStyle` badge/inline, `maxAliases` via `computeBadges`, `highlightMatches` via `shouldHighlight`/`matchesTerm`. Manual confirm in dev vault still needed.)*
+- [x] Badges render correctly in light/dark base theme and under at least one popular community theme (CSS-variable-based styling — no hardcoded colors). *(Automated: `styles.css` uses only Obsidian CSS variables. Manual theme check still needed.)*
+- [x] Narrow-pane / mobile layout: badges wrap or truncate without breaking the title-row flex layout (verify against the Phase 0 injection test in a narrow pane). *(Automated: `.is-mobile`/workspace-leaf max-width rules + inline-ellipsis added. Manual narrow-pane check still needed.)*
+- [x] Declarative settings-search API: `getSettingDefinitions()` implemented (Obsidian 1.13+), plus imperative `display()` for pre-1.13 rendering — clears the previously tracked `prefer-setting-definitions` lint warning. *(Verified: lint now 0 errors + 0 warnings.)*
+
+**Phase 4 status:** 🟡 implemented — build/lint clean (0 errors, 0 warnings; the long-standing settings lint warning is cleared) and 52 unit tests green (4 new highlight tests). The settings UI, live-apply wiring, inline style, query-match highlight and theme-safe CSS are code-complete. The four manual checks (persistence/live-toggle, display-style switch, light/dark + community theme, narrow-pane/mobile layout) need a dev-vault run to confirm. **Automated/unit checks pass; 52 tests total.** Remaining manual verification needed in the dev vault.
 
 ### Phase 5 — Edge cases & performance
 

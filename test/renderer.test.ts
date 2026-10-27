@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeBadges } from '../src/renderer';
+import { computeBadges, matchesTerm, shouldHighlight } from '../src/renderer';
 
 describe('computeBadges (maxAliases truncation)', () => {
 	it('returns no badges for an empty alias list', () => {
@@ -35,5 +35,27 @@ describe('computeBadges (maxAliases truncation)', () => {
 			{ text: 'b', more: false },
 			{ text: 'c', more: false },
 		]);
+	});
+});
+
+describe('matchesTerm / shouldHighlight (query-match emphasis)', () => {
+	it('matches a query term that is a substring, case-insensitively', () => {
+		expect(matchesTerm('Project Alpha', ['alpha'])).toBe(true);
+		expect(matchesTerm('Project Alpha', ['PROJECT'])).toBe(true);
+		expect(matchesTerm('Project Alpha', ['beta'])).toBe(false);
+	});
+
+	it('ignores empty query terms', () => {
+		expect(matchesTerm('Project', ['', '   '])).toBe(false);
+		expect(matchesTerm('Project', ['project'])).toBe(true);
+	});
+
+	it('shouldHighlight is false when there are no terms', () => {
+		expect(shouldHighlight(['alpha', 'beta'], [])).toBe(false);
+	});
+
+	it('shouldHighlight is true when any alias contains a term', () => {
+		expect(shouldHighlight(['alpha', 'beta'], ['eta'])).toBe(true);
+		expect(shouldHighlight(['alpha', 'beta'], ['nope'])).toBe(false);
 	});
 });

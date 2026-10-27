@@ -24,7 +24,9 @@ export default class AliasesInSearchResultsPlugin extends Plugin {
 		this.adapter.attach();
 
 		// Settings tab.
-		this.addSettingTab(new AliasesInSearchResultsSettingTab(this.app, this));
+		const settingTab = new AliasesInSearchResultsSettingTab(this.app, this);
+		settingTab.onApplied = () => this.adapter.refresh();
+		this.addSettingTab(settingTab);
 
 		// Keep the cache in sync with the metadata cache and vault.
 		// Rebuild from scratch only when the whole metadata cache resolves.

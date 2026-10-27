@@ -39,6 +39,8 @@ interface SearchViewInternals {
 	};
 	resultDomLookup?: unknown;
 	getViewType?: () => string;
+	getQuery?: () => unknown;
+	searchComponent?: { value?: unknown };
 }
 
 const ROW_SELECTOR = '.search-result-file-title';
@@ -113,6 +115,8 @@ export class SearchAdapter {
 
 	// Cache of validated tier-1 (resultDomLookup) lookups per leaf container.
 	private tier1Lookup = new WeakMap<HTMLElement, PathLookup>();
+	// Per-leaf current search query terms (lowercased), used for highlight.
+	private highlightTerms = new WeakMap<HTMLElement, string[]>();
 
 	constructor(
 		private readonly workspace: Workspace,
@@ -120,6 +124,15 @@ export class SearchAdapter {
 		settings: AliasesInSearchResultsSettings,
 	) {
 		this.settings = settings;
+	}
+
+	/** Re-process all currently observed rows (used on settings change). */
+	refresh(): void {
+		for (const leaf of this.bound) {
+			for (const row of leaf.observedRows) {
+				this.enqueueRow(row);
+			}
+		}
 	}
 
 	/** Attach to all open Search leaves and start observing. */
@@ -148,6 +161,7 @@ export class SearchAdapter {
 		}
 		this.bound.clear();
 		this.tier1Lookup = new WeakMap();
+		this.highlightTerms = new WeakMap();
 	}
 
 	// ------------------------------------------------------------------ bind
@@ -159,6 +173,7 @@ export class SearchAdapter {
 		}
 		this.bound.clear();
 		this.tier1Lookup = new WeakMap();
+		this.highlightTerms = new WeakMap();
 
 		for (const workspLeaf of this.workspace.getLeavesOfType('search')) {
 			this.bindLeaf(workspLeaf);
@@ -242,6 +257,7 @@ export class SearchAdapter {
 		mutationObserver.observe(rootEl, { childList: true, subtree: true });
 
 		this.tier1Lookup.set(rootEl, this.makeTier1Lookup(view));
+		this.highlightTerms.set(rootEl, this.queryTerms(view));
 
 		const bound: BoundLeaf = {
 			rootEl,
@@ -265,6 +281,30 @@ export class SearchAdapter {
 		}
 		const content = container.closest<HTMLElement>(LEAF_CONTENT_SELECTOR);
 		return content ?? container;
+	}
+
+	/**
+	 * Defensively read the current search query terms for highlight matching.
+	 * Falls back to an empty list when the query can't be reached (never throws).
+	 */
+	private queryTerms(view: View): string[] {
+		try {
+			const internals = view as unknown as SearchViewInternals;
+			const raw =
+				typeof internals.getQuery === 'function'
+					? internals.getQuery()
+					: (internals as unknown as { searchComponent?: { value?: unknown } })
+							?.searchComponent?.value;
+			if (typeof raw === 'string') {
+				return raw
+					.toLowerCase()
+					.split(/[^a-z0-9äöüß+.-]+/i)
+					.filter((t) => t.length > 0);
+			}
+		} catch {
+			// Ignore — highlight simply won't trigger.
+		}
+		return [];
 	}
 
 	// --------------------------------------------------- tier 1: row -> file
@@ -341,7 +381,8 @@ export class SearchAdapter {
 		}
 
 		const aliases = this.cache.getAliases(path);
-		renderAliases(titleEl, aliases, this.settings);
+		const terms = this.highlightTerms.get(rootEl) ?? [];
+		renderAliases(titleEl, aliases, this.settings, terms);
 	}
 
 	private resolvePath(titleEl: HTMLElement, rootEl: HTMLElement): string | null {

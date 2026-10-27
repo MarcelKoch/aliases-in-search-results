@@ -63,3 +63,48 @@ community theme. Namespaced with the `aisr-` prefix to avoid leaks.
 	flex: 0 0 auto;
 	overflow: visible;
 }
+
+/* Inline display style: aliases as muted, comma-separated text on the title
+   line. No pill background — just subtle separation from the note title. */
+.aisr-badge-container.aisr-inline {
+	display: inline;
+	flex: 0 1 auto;
+	min-width: 0;
+	max-width: 60%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.aisr-inline-text {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	margin: 0;
+}
+
+.aisr-inline-text .aisr-sep {
+	opacity: 0.7;
+}
+
+/* Query-match emphasis (alias contains a current search term): use a soft,
+   theme-safe highlight so it reads as "this matched" without clashing. */
+.aisr-highlight {
+	background: var(--background-modifier-active-hover);
+	color: var(--text-normal);
+	outline: 1px solid var(--background-modifier-border-focus);
+}
+
+.aisr-inline-text .aisr-highlighted {
+	color: var(--text-normal);
+	background: var(--background-modifier-active-hover);
+	border-radius: 2px;
+	padding: 0 1px;
+}
+
+/* Narrow-pane / mobile: allow the inline container to elide long runs while
+   keeping the plus-k and first badge visible (flex rules above handle badges;
+   this relaxes the container cap so text can still truncate gracefully). */
+.is-mobile .aisr-badge-container,
+.workspace-leaf .aisr-badge-container {
+	max-width: 60%;
+}
