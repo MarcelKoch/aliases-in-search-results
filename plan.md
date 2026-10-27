@@ -96,8 +96,8 @@ Following reviewer-preferred patterns (types, defaults, `Setting` UI, live-apply
 | Phase | Deliverable |
 |---|---|
 | **0 — Spike ✅ done** | Executed — findings + DevTools verification complete, see `docs/phase0-search-internals.md` §9 and plan §9. |
-| 1 | Scaffold project, build pipeline, manifest, dev vault + Hot-Reload loop |
-| 2 | `aliasResolver` + cache with events, unit-tested |
+| 1 | Scaffold project, build pipeline, manifest, dev vault + Hot-Reload loop. **✅ done** — automated steps verified in this session; plugin load + Hot-Reload user-verified in dev vault. |
+| 2 | `aliasResolver` + cache with events, unit-tested. **✅ implemented+unit-tested** (23 tests green). One manual vault probe pending (see §10 Phase 2). |
 | 3 | `searchAdapter` + `renderer`: badges appear in search results, clean unload |
 | 4 | Settings tab + styles.css theming |
 | 5 | Edge cases, performance, manual QA checklist |
@@ -115,27 +115,33 @@ A phase is complete only when **all** of its listed checks pass. Checkmarks belo
 - [x] Test badge visually injected at the chosen injection point.
 - [x] Findings written to `docs/phase0-search-internals.md` with no unresolved blockers.
 
-### Phase 1 — Scaffold
+### Phase 1 — Scaffold ✅
 
 - [x] `npm install && npm run build` succeeds on a clean checkout with **zero** TypeScript errors (strict mode) and zero eslint errors. *(Verified: build exit 0; `tsc -noEmit` strict clean; `eslint .` 0 errors — 1 warning tracked to Phase 4.)*
 - [x] `manifest.json` valid: unique id, name, version, `minAppVersion`, description, author, `isDesktopOnly: false` (mobile requirement from Phase 0). *(Verified by assertion script.)*
-- [ ] Built `main.js` loads in Obsidian without console errors; plugin appears in Community Plugins list; enable/disable toggles cleanly (no leftover console warnings). *(Needs user DevVault run — see below.)*
-- [ ] Dev vault set up via symlink; Hot-Reload reflects a trivial change (e.g., a `console.log` in `onload`) without manual reimport. *(Needs user DevVault run — see below.)*
+- [x] Built `main.js` loads in Obsidian without console errors; plugin appears in Community Plugins list; enable/disable toggles cleanly (no leftover console warnings). *(User-verified in dev vault.)*
+- [x] Dev vault set up via symlink; Hot-Reload reflects a trivial change (e.g., a `console.log` in `onload`) without manual reimport. *(User-verified in dev vault.)*
 - [x] `npm test` runs the empty vitest suite (CI-ready green baseline). *(Verified: 2 tests pass via an obsidian runtime stub.)*
 - [x] Directory layout matches the architecture in §3 (module stubs exist and typecheck). *(Verified: `src/{main,settings,aliasResolver,cache,renderer,searchAdapter}.ts` all present and typecheck.)*
 
-**To finish Phase 1 (user-required steps):**
-1. Create/dev vault, then run `scripts/dev-vault-link.sh <vault-path>` to symlink the plugin folder.
-2. Open Obsidian, enable **Settings → Community plugins → Aliases in Search Results** (requires the plugin to be visible; if not, enable "Unknown plugins" or place artifacts manually).
-3. Run `npm run dev` in the repo; change the `console.log`-style trivial hook in `src/main.ts` `onload()` and confirm the app picks it up via Hot-Reload without reimport.
-4. Confirm enable/disable produces no console errors and no leftover DOM.
-
 ### Phase 2 — Alias resolution & cache
 
-- [ ] Unit tests pass for: single-string alias, array alias, empty array, empty strings, whitespace-only entries, duplicates, malformed frontmatter (aliases not a string/array), alias on a file without frontmatter.
-- [ ] Unit tests pass for cache index maintenance: `changed`/`resolve` recompute, `rename` moves entry, `delete` removes entry, full rebuild on `resolved`.
-- [ ] Index correctness verified manually: edit aliases in a note → index reflects it within one metadata event; `console`-verified count matches number of files with aliases in the vault.
-- [ ] No full-vault rescan happens on single-file metadata events (asserted by test spy).
+- [x] Unit tests pass for: single-string alias, array alias, empty array, empty strings, whitespace-only entries, duplicates, malformed frontmatter (aliases not a string/array), alias on a file without frontmatter. *(Verified: 13 tests in `test/aliasResolver.test.ts`.)*
+- [x] Unit tests pass for cache index maintenance: `changed`/`resolve` recompute, `rename` moves entry, `delete` removes entry, full rebuild on `resolved`. *(Verified: 8 tests in `test/cache.test.ts`, incl. basename-ambiguity never-guess and basename-change-on-rename.)*
+- [ ] Index correctness verified manually: edit aliases in a note → index reflects it within one metadata event; `console`-verified count matches number of files with aliases in the vault. *(Needs user run in dev vault — the cache is built+event-wired; provide a console probe below.)*
+- [x] No full-vault rescan happens on single-file metadata events (asserted by test spy). *(Verified: `rebuild` spy asserts 0 calls across recompute/move/remove.)*
+
+**Manual probe to finish Phase 2 (user-required):**
+```js
+// In the dev vault with the plugin enabled, run one search, then:
+const p = app.plugins.plugins['aliases-in-search-results'];
+const c = p?.cache?.size ?? -1;
+const withAliases = app.vault.getMarkdownFiles().filter(f => app.metadataCache.getFileCache(f)?.frontmatter?.aliases).length;
+console.log('cache.size =', c, '| files w/ aliases =', withAliases);
+// Edit a note's frontmatter aliases (add/remove one), then:
+console.log('after edit, getAliases =', p.cache.getAliases('<path-of-edited-note>.md'));
+```
+Expect: `cache.size` equals the number of markdown files (both indexes track path→aliases regardless of alias presence; `hasAnyAliases()` is the emptiness switch), and `getAliases('<edited>')` reflects the change right after the metadata `changed` event fires (no plugin reload).
 
 ### Phase 3 — Badges in search results
 

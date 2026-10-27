@@ -26,11 +26,29 @@ export default class AliasesInSearchResultsPlugin extends Plugin {
 		// Settings tab.
 		this.addSettingTab(new AliasesInSearchResultsSettingTab(this.app, this));
 
-		// React to new/renamed/deleted files (full event wiring in Phase 2).
+		// Keep the cache in sync with the metadata cache and vault.
+		// Rebuild from scratch only when the whole metadata cache resolves.
 		this.registerEvent(
-			this.app.vault.on('create', (file) => {
+			this.app.metadataCache.on('resolved', () => {
+				this.cache.rebuild(this.app.vault.getMarkdownFiles());
+			}),
+		);
+		// Single-file metadata updates: recompute — never a full rescan.
+		const recompute = (file: TFile): void => this.cache.recompute(file);
+		this.registerEvent(
+			this.app.metadataCache.on('changed', (file) => recompute(file)),
+		);
+		this.registerEvent(
+			this.app.metadataCache.on('resolve', (file) => recompute(file)),
+		);
+		this.registerEvent(
+			this.app.metadataCache.on('deleted', (file) => this.cache.remove(file)),
+		);
+		// Vault rename (provides the old path): relocate the entry.
+		this.registerEvent(
+			this.app.vault.on('rename', (file, oldPath) => {
 				if (file instanceof TFile) {
-					this.cache.recompute(file);
+					this.cache.move(oldPath, file.path, file.basename);
 				}
 			}),
 		);
