@@ -26,6 +26,16 @@ interface SearchViewInternals {
 	dom?: {
 		resultDomLookup?: unknown;
 		childrenEl?: unknown;
+		/**
+		 * Virtualized children list. Each entry is a per-file child object that
+		 * carries `file` (with `.path`) and `selfEl` — the rendered DOM element
+		 * for that row. This is the reliable row→file hook across Obsidian
+		 * versions (resultDomLookup's keys are result objects, not elements, on
+		 * modern builds, so it can't be keyed by DOM element).
+		 */
+		vChildren?: {
+			_children?: unknown;
+		};
 	};
 	resultDomLookup?: unknown;
 	getViewType?: () => string;
@@ -53,6 +63,44 @@ interface BoundLeaf {
 
 interface PathLookup {
 	resolve(titleEl: HTMLElement): string | null;
+}
+
+/**
+ * Build a resolver over a per-element path map. Resolves a title row by
+ * checking itself first, then bounded ancestors, then its row subtree, then
+ * falls back to `undefined` (never-guess). Every returned path comes from a
+ * real `.file.path` / map entry, so it never guesses which file a row is.
+ */
+function makeResolver(byElement: Map<Element, string>): PathLookup {
+	return {
+		resolve(titleEl: HTMLElement): string | null {
+			let hit = byElement.get(titleEl);
+			if (hit !== undefined) {
+				return hit;
+			}
+			// `vChildren` child `.selfEl` is the row title element itself, but to
+			// stay tolerant across versions also check bounded ancestors (the
+			// `.tree-item`/`.tree-item-self` wrappers) and the row subtree.
+			for (
+				let ancestor = titleEl.parentElement, depth = 0;
+				ancestor && depth < 3;
+				ancestor = ancestor.parentElement, depth += 1
+			) {
+				hit = byElement.get(ancestor);
+				if (hit !== undefined) {
+					return hit;
+				}
+			}
+			const rowRoot = titleEl.parentElement?.closest<HTMLElement>('.tree-item') ?? titleEl;
+			for (const el of Array.from(rowRoot.querySelectorAll('*'))) {
+				hit = byElement.get(el);
+				if (hit !== undefined) {
+					return hit;
+				}
+			}
+			return null;
+		},
+	};
 }
 
 export class SearchAdapter {
@@ -219,62 +267,39 @@ export class SearchAdapter {
 		return content ?? container;
 	}
 
-	// --------------------------------------------------- tier 1: resultDomLookup
+	// --------------------------------------------------- tier 1: row -> file
+	/**
+	 * Build the row->file lookup for a leaf. Prefers the reliable `vChildren`
+	 * hook (each child carries `.file.path` and `.selfEl`, the rendered row
+	 * element), which works even for same-basename files in different folders.
+	 * Falls back to `resultDomLookup` keys only when they are actual DOM
+	 * elements (the historic shape). Returns a resolver that returns null when
+	 * the row can't be confidently mapped (never-guess rule).
+	 */
 	private makeTier1Lookup(view: View): PathLookup {
 		const internals = view as unknown as SearchViewInternals;
+
+		const children = Array.isArray(internals.dom?.vChildren?._children)
+			? (internals.dom.vChildren._children as Array<unknown>)
+			: null;
+		if (children) {
+			const byElement = buildVChildrenPathMap(children);
+			if (byElement !== null && byElement.size > 0) {
+				return makeResolver(byElement);
+			}
+		}
+
+		// Legacy fallback: resultDomLookup keyed by DOM elements (obsidian < this
+		// shape change). Defensive — resolves nothing when keys aren't Elements.
 		const map = internals.dom?.resultDomLookup ?? internals.resultDomLookup;
-		if (!(map instanceof Map)) {
-			return { resolve: () => null };
+		if (map instanceof Map) {
+			const byElement = buildElementPathMap(map);
+			if (byElement !== null && byElement.size > 0) {
+				return makeResolver(byElement);
+			}
 		}
 
-		// Build a per-element lookup. Rows whose value can't be resolved are
-		// omitted rather than blanking the whole view, so one odd entry (or a
-		// same-basename collision rendered as an ambiguous match list) doesn't
-		// force every other row down to the (ambiguous) basename fallback.
-		const byElement = buildElementPathMap(map);
-		if (byElement === null || byElement.size === 0) {
-			return { resolve: () => null };
-		}
-
-		return {
-			resolve(titleEl: HTMLElement): string | null {
-				const direct = byElement.get(titleEl);
-				if (direct !== undefined) {
-					return direct;
-				}
-				// The key may be an ancestor (the .tree-item row root) rather than
-				// the title el itself. Walk a few levels up (title -> tree-item-self
-				// row root -> results container) but stay bounded so we never reach
-				// a higher-level container that groups other rows.
-				for (
-					let ancestor = titleEl.parentElement, depth = 0;
-					ancestor && depth < 3;
-					ancestor = ancestor.parentElement, depth += 1
-				) {
-					const viaAncestor = byElement.get(ancestor);
-					if (viaAncestor !== undefined) {
-						return viaAncestor;
-					}
-				}
-				// The key may live inside the row subtree rather than on the title
-				// (Obsidian keys individual match sub-rows in some versions, e.g.
-				// `.search-result-file-match`). Search the row root for any element
-				// that is a key in resultDomLookup. Every path returned still comes
-				// from a real map entry, so this never guesses — it just finds the
-				// key Obsidian used for this row. Only runs on miss (pathological)
-				// and the subtree is small.
-				const rowRoot = titleEl.parentElement?.closest<HTMLElement>('.tree-item') ?? titleEl;
-				for (const el of Array.from(rowRoot.querySelectorAll('*'))) {
-					if (byElement.has(el)) {
-						const path = byElement.get(el);
-						if (path !== undefined) {
-							return path;
-						}
-					}
-				}
-				return null;
-			},
-		};
+		return { resolve: () => null };
 	}
 
 	// ----------------------------------------------------- row processing
@@ -386,6 +411,57 @@ export function buildElementPathMap(map: Map<unknown, unknown>): Map<Element, st
 		}
 	}
 	return byElement;
+}
+
+/**
+ * Build an element -> file-path map from the virtualized children list
+ * (`view.dom.vChildren._children`). Each child is a per-file result object that
+ * carries `file` (a TFile with `.path`) and `selfEl` — the rendered DOM element
+ * for that row. This is the reliable row→file hook across Obsidian versions:
+ * `resultDomLookup` keys are *result objects* (not DOM elements) on modern
+ * builds, so they can't be keyed by element.
+ *
+ * Rows that don't expose a usable `.selfEl`/`.file.path` are omitted (never
+ * blank the whole view). Returns null when the array shape is unusable so
+ * callers fall back to the basename index.
+ */
+export function buildVChildrenPathMap(
+	children: Array<unknown>,
+): Map<Element, string> | null {
+	const byElement = new Map<Element, string>();
+	for (const child of children) {
+		const selfEl = extractChildEl(child);
+		const path = extractChildPath(child);
+		if (selfEl !== null && path !== null) {
+			byElement.set(selfEl, path);
+		}
+	}
+	return byElement;
+}
+
+/** The rendered row element for a vChildren child, or null when missing. */
+function extractChildEl(child: unknown): Element | null {
+	const selfEl = (child as { selfEl?: unknown })?.selfEl;
+	if (selfEl instanceof Element) {
+		return selfEl;
+	}
+	// Fall back to other element-like handles if Obsidian renames them.
+	const el = (child as { el?: unknown })?.el;
+	return el instanceof Element ? el : null;
+}
+
+/** The file path for a vChildren child, or null when missing/invalid. */
+function extractChildPath(child: unknown): string | null {
+	const file = (child as { file?: { path?: unknown } })?.file;
+	if (file && typeof file.path === 'string') {
+		return file.path;
+	}
+	const result = (child as { result?: { file?: { path?: unknown } } })?.result;
+	const resultFile = result?.file;
+	if (resultFile && typeof resultFile.path === 'string') {
+		return resultFile.path;
+	}
+	return null;
 }
 
 /**

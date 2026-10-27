@@ -1,5 +1,9 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { buildElementPathMap, extractFilePath } from '../src/searchAdapter';
+import {
+	buildElementPathMap,
+	buildVChildrenPathMap,
+	extractFilePath,
+} from '../src/searchAdapter';
 
 // `buildElementPathMap` checks `key instanceof Element`. In the node test env
 // there is no DOM global, so install a minimal stand-in that supports the
@@ -112,5 +116,61 @@ describe('buildElementPathMap (shape-check accept/reject)', () => {
 	it('accepts an empty map (produces an empty mapping)', () => {
 		const result = buildElementPathMap(new Map());
 		expect(result).toEqual(new Map());
+	});
+});
+
+describe('buildVChildrenPathMap (vChildren row->file hook)', () => {
+	it('maps each child\'s selfEl to its file path', () => {
+		const rowA = new FakeElement();
+		const rowB = new FakeElement();
+		const children = [
+			{ file: { path: 'notes/a.md' }, selfEl: rowA },
+			{ file: { path: 'docs/b.md' }, selfEl: rowB },
+		];
+		const result = buildVChildrenPathMap(children);
+		expect(result).not.toBeNull();
+		expect(result!.get(rowA)).toBe('notes/a.md');
+		expect(result!.get(rowB)).toBe('docs/b.md');
+	});
+
+	it('disambiguates same-basename files in different folders (the bug)', () => {
+		const rowRoot = new FakeElement();
+		const rowNested = new FakeElement();
+		const children = [
+			// Root-level "Untitled.md" vs nested "Untitled/Untitled.md" share the
+			// basename "Untitled" but have distinct full paths.
+			{ file: { path: 'Untitled.md' }, selfEl: rowRoot },
+			{ file: { path: 'Untitled/Untitled.md' }, selfEl: rowNested },
+		];
+		const result = buildVChildrenPathMap(children);
+		expect(result).not.toBeNull();
+		expect(result!.get(rowRoot)).toBe('Untitled.md');
+		expect(result!.get(rowNested)).toBe('Untitled/Untitled.md');
+	});
+
+	it('skips a child without a usable selfEl', () => {
+		const good = new FakeElement();
+		const result = buildVChildrenPathMap([{ file: { path: 'a.md' }, selfEl: good }, { file: { path: 'b.md' } }]);
+		expect(result).not.toBeNull();
+		expect(result!.get(good)).toBe('a.md');
+		expect(result!.size).toBe(1);
+	});
+
+	it('skips a child without a usable path', () => {
+		const row = new FakeElement();
+		const result = buildVChildrenPathMap([{ selfEl: row }, { file: { path: 123 }, selfEl: new FakeElement() }]);
+		expect(result).not.toBeNull();
+		expect(result!.size).toBe(0);
+	});
+
+	it('reads path from a nested result.file as a fallback shape', () => {
+		const row = new FakeElement();
+		const result = buildVChildrenPathMap([{ result: { file: { path: 'wrapped.md' } }, selfEl: row }]);
+		expect(result).not.toBeNull();
+		expect(result!.get(row)).toBe('wrapped.md');
+	});
+
+	it('accepts an empty children list (empty mapping)', () => {
+		expect(buildVChildrenPathMap([])).toEqual(new Map());
 	});
 });
