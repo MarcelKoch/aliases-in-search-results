@@ -224,6 +224,7 @@ export class SearchAdapter {
 		};
 
 		const mutationObserver = new MutationObserver((mutations) => {
+			let rowsAdded = false;
 			for (const mutation of mutations) {
 				if (mutation.type !== 'childList') {
 					continue;
@@ -233,11 +234,14 @@ export class SearchAdapter {
 						continue;
 					}
 					if (node.matches(ROW_SELECTOR)) {
+						rowsAdded = true;
 						observeRow(node);
 					} else {
-						Array.from(node.querySelectorAll(ROW_SELECTOR)).forEach((row) =>
-							observeRow(row as HTMLElement),
-						);
+						const found = Array.from(node.querySelectorAll(ROW_SELECTOR));
+						if (found.length > 0) {
+							rowsAdded = true;
+						}
+						found.forEach((row) => observeRow(row as HTMLElement));
 					}
 				}
 				// Unobserve rows being removed (includes full container swaps on
@@ -252,6 +256,14 @@ export class SearchAdapter {
 						Array.from(node.querySelectorAll(ROW_SELECTOR)).forEach(unobserveRow);
 					}
 				}
+			}
+			// Rows were (re)added — the `vChildren` children list may now contain
+			// rows that weren't materialized when the leaf was bound (same-name
+			// files are lazily rendered). Refresh the tier-1 map so those rows
+			// resolve to their exact path instead of falling back to the ambiguous
+			// basename index (where collided basenames get no badge).
+			if (rowsAdded) {
+				this.refreshTier1(rootEl, view);
 			}
 		});
 		mutationObserver.observe(rootEl, { childList: true, subtree: true });
@@ -340,6 +352,18 @@ export class SearchAdapter {
 		}
 
 		return { resolve: () => null };
+	}
+
+	/**
+	 * Rebuild the tier-1 lookup for a leaf's root. Called whenever rows are
+	 * (re)added, because `vChildren._children` grows lazily — rows that weren't
+	 * materialized when the leaf was bound must be resolvable once they appear
+	 * (same-name files in different folders are the case that otherwise falls
+	 * through to the ambiguous basename index).
+	 */
+	private refreshTier1(rootEl: HTMLElement, view: View): void {
+		this.tier1Lookup.set(rootEl, this.makeTier1Lookup(view));
+		this.highlightTerms.set(rootEl, this.queryTerms(view));
 	}
 
 	// ----------------------------------------------------- row processing
