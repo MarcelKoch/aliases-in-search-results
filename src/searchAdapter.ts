@@ -242,12 +242,34 @@ export class SearchAdapter {
 				if (direct !== undefined) {
 					return direct;
 				}
-				// The key may be the row root (.tree-item) rather than the title el.
-				const parent = titleEl.parentElement;
-				if (parent) {
-					const viaParent = byElement.get(parent);
-					if (viaParent !== undefined) {
-						return viaParent;
+				// The key may be an ancestor (the .tree-item row root) rather than
+				// the title el itself. Walk a few levels up (title -> tree-item-self
+				// row root -> results container) but stay bounded so we never reach
+				// a higher-level container that groups other rows.
+				for (
+					let ancestor = titleEl.parentElement, depth = 0;
+					ancestor && depth < 3;
+					ancestor = ancestor.parentElement, depth += 1
+				) {
+					const viaAncestor = byElement.get(ancestor);
+					if (viaAncestor !== undefined) {
+						return viaAncestor;
+					}
+				}
+				// The key may live inside the row subtree rather than on the title
+				// (Obsidian keys individual match sub-rows in some versions, e.g.
+				// `.search-result-file-match`). Search the row root for any element
+				// that is a key in resultDomLookup. Every path returned still comes
+				// from a real map entry, so this never guesses — it just finds the
+				// key Obsidian used for this row. Only runs on miss (pathological)
+				// and the subtree is small.
+				const rowRoot = titleEl.parentElement?.closest<HTMLElement>('.tree-item') ?? titleEl;
+				for (const el of Array.from(rowRoot.querySelectorAll('*'))) {
+					if (byElement.has(el)) {
+						const path = byElement.get(el);
+						if (path !== undefined) {
+							return path;
+						}
 					}
 				}
 				return null;
