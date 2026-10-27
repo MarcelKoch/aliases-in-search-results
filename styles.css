@@ -11,13 +11,14 @@ community theme. Namespaced with the `aisr-` prefix to avoid leaks.
 
 .aisr-badge-container {
 	/* Inline flex keeps badges on the title line, before the match-count flair.
-	   min-width/Max/basis keep the container shrinkable inside the title row's
-	   flex layout so an over-long alias can't push the row out of bounds. */
+	   The container may shrink (flex 0 1 auto, min-width 0) but never grows
+	   (flex-basis auto via ignore). A generous max-width guards pathological
+	   rows; overflow clips badges that don't fit rather than stretching the row. */
 	display: inline-flex;
 	align-items: center;
 	gap: 2px;
 	margin: 0 4px;
-	max-width: 40%;
+	max-width: 55%;
 	flex: 0 1 auto;
 	min-width: 0;
 	overflow: hidden;
@@ -34,8 +35,25 @@ community theme. Namespaced with the `aisr-` prefix to avoid leaks.
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	/* A single very long alias must truncate with ellipsis, not stretch the row. */
 	max-width: 100%;
+}
+
+/* The FIRST alias is never truncated or hidden if it can be shown at all: it
+   keeps its full size (flex 0 0 auto) and is exempt from ellipsis. */
+.aisr-badge-container .aisr-badge:first-child:not(.aisr-badge-more) {
+	flex: 0 0 auto;
+	overflow: visible;
+	text-overflow: clip;
+}
+
+/* Subsequent aliases are the ones preferred for truncation/hiding: they may
+   shrink (flex 0 1 auto) and ellipsize first when the row is tight, so a long
+   secondary alias on a narrow pane collapses before the first is touched. */
+.aisr-badge-container .aisr-badge:not(:first-child):not(.aisr-badge-more) {
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 /* Keep the "+k more" indicator always visible and never truncated. */
