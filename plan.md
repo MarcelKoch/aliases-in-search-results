@@ -117,12 +117,18 @@ A phase is complete only when **all** of its listed checks pass. Checkmarks belo
 
 ### Phase 1 — Scaffold
 
-- [ ] `npm install && npm run build` succeeds on a clean checkout with **zero** TypeScript errors (strict mode) and zero eslint errors.
-- [ ] `manifest.json` valid: unique id, name, version, `minAppVersion`, description, author, `isDesktopOnly: false` (mobile requirement from Phase 0).
-- [ ] Built `main.js` loads in Obsidian without console errors; plugin appears in Community Plugins list; enable/disable toggles cleanly (no leftover console warnings).
-- [ ] Dev vault set up via symlink; Hot-Reload reflects a trivial change (e.g., a `console.log` in `onload`) without manual reimport.
-- [ ] `npm test` runs the empty vitest suite (CI-ready green baseline).
-- [ ] Directory layout matches the architecture in §3 (module stubs exist and typecheck).
+- [x] `npm install && npm run build` succeeds on a clean checkout with **zero** TypeScript errors (strict mode) and zero eslint errors. *(Verified: build exit 0; `tsc -noEmit` strict clean; `eslint .` 0 errors — 1 warning tracked to Phase 4.)*
+- [x] `manifest.json` valid: unique id, name, version, `minAppVersion`, description, author, `isDesktopOnly: false` (mobile requirement from Phase 0). *(Verified by assertion script.)*
+- [ ] Built `main.js` loads in Obsidian without console errors; plugin appears in Community Plugins list; enable/disable toggles cleanly (no leftover console warnings). *(Needs user DevVault run — see below.)*
+- [ ] Dev vault set up via symlink; Hot-Reload reflects a trivial change (e.g., a `console.log` in `onload`) without manual reimport. *(Needs user DevVault run — see below.)*
+- [x] `npm test` runs the empty vitest suite (CI-ready green baseline). *(Verified: 2 tests pass via an obsidian runtime stub.)*
+- [x] Directory layout matches the architecture in §3 (module stubs exist and typecheck). *(Verified: `src/{main,settings,aliasResolver,cache,renderer,searchAdapter}.ts` all present and typecheck.)*
+
+**To finish Phase 1 (user-required steps):**
+1. Create/dev vault, then run `scripts/dev-vault-link.sh <vault-path>` to symlink the plugin folder.
+2. Open Obsidian, enable **Settings → Community plugins → Aliases in Search Results** (requires the plugin to be visible; if not, enable "Unknown plugins" or place artifacts manually).
+3. Run `npm run dev` in the repo; change the `console.log`-style trivial hook in `src/main.ts` `onload()` and confirm the app picks it up via Hot-Reload without reimport.
+4. Confirm enable/disable produces no console errors and no leftover DOM.
 
 ### Phase 2 — Alias resolution & cache
 
