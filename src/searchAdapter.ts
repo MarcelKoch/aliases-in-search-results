@@ -227,8 +227,12 @@ export class SearchAdapter {
 			return { resolve: () => null };
 		}
 
+		// Build a per-element lookup. Rows whose value can't be resolved are
+		// omitted rather than blanking the whole view, so one odd entry (or a
+		// same-basename collision rendered as an ambiguous match list) doesn't
+		// force every other row down to the (ambiguous) basename fallback.
 		const byElement = buildElementPathMap(map);
-		if (byElement === null) {
+		if (byElement === null || byElement.size === 0) {
 			return { resolve: () => null };
 		}
 
@@ -334,9 +338,11 @@ export class SearchAdapter {
 
 /**
  * Build an element -> file-path map from the internal `resultDomLookup` map,
- * validating its shape. Returns null when the shape is unusable (so callers can
- * fall back to the basename index rather than throw). Exported for unit tests
- * of the shape-check accept/reject paths.
+ * validating its shape. Returns null when the map is unusable (non-Element
+ * keys), so callers can fall back to the basename index. Entries whose values
+ * yield no file path are *skipped* (not fatal): a single odd row must not blank
+ * the whole view — that's what caused same-basename rows in different folders
+ * to silently lose their badges when the fallback also became ambiguous.
  *
  * Accepts keys that are `Element`s whose values yield a file path via
  * `extractFilePath` (e.g. `{ file: TFile }` or an array of such objects).
@@ -348,28 +354,42 @@ export function buildElementPathMap(map: Map<unknown, unknown>): Map<Element, st
 			return null;
 		}
 		const path = extractFilePath(value);
-		if (path === null) {
-			return null;
+		if (path !== null) {
+			// A same-basename row may map to several candidate files; only keep
+			// it when `extractFilePath` is confident about a single file.
+			byElement.set(key, path);
 		}
-		byElement.set(key, path);
 	}
 	return byElement;
 }
 
 /**
  * Defensively extract a file path from a resultDomLookup value, whose shape is
- * internal and version-dependent. Handles `{ file: TFile }`, arrays of such
- * objects (match lists), and single-item wrappers. Returns null when unknown.
+ * internal and version-dependent. Handles `{ file: TFile }` and arrays of such
+ * objects (match lists).
+ *
+ * Same-basename files in different folders appear as an array with multiple
+ * distinct file paths; that is inherently ambiguous per row, so an array is
+ * only accepted when every entry resolves to the *same* path (one file). This
+ * keeps the never-guess invariant: never attach a badge to the wrong file.
+ *
+ * Returns null when unknown or ambiguous.
  */
 export function extractFilePath(value: unknown): string | null {
 	if (Array.isArray(value)) {
+		let resolved: string | null = null;
 		for (const item of value) {
 			const path = extractFilePath(item);
 			if (path !== null) {
-				return path;
+				if (resolved === null) {
+					resolved = path;
+				} else if (resolved !== path) {
+					// Multiple distinct files in one match list -> ambiguous.
+					return null;
+				}
 			}
 		}
-		return null;
+		return resolved;
 	}
 	if (value && typeof value === 'object') {
 		const file = (value as { file?: { path?: unknown } }).file;

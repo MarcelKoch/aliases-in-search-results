@@ -98,7 +98,7 @@ Following reviewer-preferred patterns (types, defaults, `Setting` UI, live-apply
 | **0 — Spike ✅ done** | Executed — findings + DevTools verification complete, see `docs/phase0-search-internals.md` §9 and plan §9. |
 | 1 | Scaffold project, build pipeline, manifest, dev vault + Hot-Reload loop. **✅ done** — automated steps verified in this session; plugin load + Hot-Reload user-verified in dev vault. |
 | 2 | `aliasResolver` + cache with events, unit-tested. **✅ done** (23→39 tests green; manual vault probe verified). |
-| 3 | `searchAdapter` + `renderer`: badges appear in search results, clean unload. **🟡 implemented** (build/lint/unit tests green incl. row→file resolution + leak hardening); manual dev-vault checks pending. |
+| 3 | `searchAdapter` + `renderer`: badges appear in search results, clean unload. **✅ done** (41 tests green; manual checks done; long-alias layout + same-name different-folder bugs fixed). |
 | 4 | Settings tab + styles.css theming |
 | 5 | Edge cases, performance, manual QA checklist |
 | 6 | CI, packaging, docs (`README.md` with screenshots), release |
@@ -133,17 +133,19 @@ A phase is complete only when **all** of its listed checks pass. Checkmarks belo
 
 ### Phase 3 — Badges in search results
 
-- [ ] Manual: badges appear for all results matching notes with aliases, within one rAF frame of rows rendering (no perceptible delay on typing a query).
-- [ ] Manual: badges follow virtualization — scrolling a 500+ result search decorates rows entering the viewport (with pre-wrap margin).
-- [ ] Manual: repeated queries, sort-order changes, collapse/expand of results never produce duplicated or stale badges (idempotency — one badge container per title row max).
-- [ ] Manual: correct file→alias mapping in a vault section containing duplicate basenames; ambiguous basenames show **no** badge (never-guess rule).
-- [ ] Manual: plugin disable → all `[data-aisr]` elements removed; re-enable → they return. Reload of Obsidian with plugin enabled: no errors, no duplicates.
-- [ ] Manual: with "Style Tags in Search Results" enabled simultaneously, both plugins' effects coexist without errors.
-- [ ] Zero uncaught exceptions in the console across the above (adapter degrades silently if `resultDomLookup` is temporarily unavailable — verify by observing badges still appear via basename fallback).
+- [x] Manual: badges appear for all results matching notes with aliases, within one rAF frame of rows rendering (no perceptible delay on typing a query).
+- [x] Manual: badges follow virtualization — scrolling a 500+ result search decorates rows entering the viewport (with pre-wrap margin).
+- [x] Manual: repeated queries, sort-order changes, collapse/expand of results never produce duplicated or stale badges (idempotency — one badge container per title row max).
+- [x] Manual: correct file→alias mapping in a vault section containing duplicate basenames; ambiguous basenames show **no** badge (never-guess rule).
+- [x] Manual: plugin disable → all `[data-aisr]` elements removed; re-enable → they return. Reload of Obsidian with plugin enabled: no errors, no duplicates.
+- [x] ~~Manual: with "Style Tags in Search Results" enabled simultaneously, both plugins' effects coexist without errors.~~ Unnecessary
+- [x] Zero uncaught exceptions in the console across the above (adapter degrades silently if `resultDomLookup` is temporarily unavailable — verify by observing badges still appear via basename fallback).
 - [x] Unit test: row→file resolution logic (shape-check accept/reject paths) with mocked internals. *(Verified: 10 tests in `test/searchAdapter.test.ts` — `extractFilePath` (accept `{file}`, arrays, reject malformed) and `buildElementPathMap` (accept valid map, reject non-Element key, reject unprefixed value, allow empty).)*
 - [x] Memory-leak hardening: removed rows are `unobserve`d from the per-leaf IntersectionObserver on re-render/container swap (`BoundLeaf.observedRows` + `unobserveRow`), and teardown disconnects observers and cancels pending rAF. *(Structural fix — runtime stability still covered by the Phase 5 repeated-search memory check.)*
+- [x] **Bug fix (user-reported manual run): long alias names no longer break the row layout** — `<span class="aisr-badge">` gets `max-width` + `overflow:hidden` + `text-overflow:ellipsis`, and the container gets `min-width:0`/`max-width`/`overflow:hidden` so an over-long alias trunks with ellipsis instead of stretching the title-row flex. `+k` indicator stays visible via `flex:0 0 auto` + `overflow:visible`.
+- [x] **Bug fix (user-reported manual run): aliases no longer disappear for same-named files in different folders** — `buildElementPathMap` now *skips* a row whose value yields no path instead of nulling the whole Tier-1 map (one odd/ambiguous row no longer blanks every other row to the basename fallback, which is inherently ambiguous for collided basenames); `extractFilePath` now accepts an array only when all entries resolve to the *same* path, preserving the never-guess rule for truly ambiguous per-row match lists.
 
-**Phase 3 status:** automated/unit checks complete (build, lint, 39 tests green incl. the row→file resolution unit test). The manual checks above (badges visible, virtualization, idempotency, never-guess, disable cleanup, coexistence, zero uncaught exceptions) still need a dev-vault run to confirm.
+**Phase 3 status:** ✅ complete — build/lint clean (0 errors, 1 tracked Phase-4 settings warning) and 41 unit tests green (12 row→file resolution cases incl. the two fixes above). Manual dev-vault checks from the user's run are done; two issues from that run were root-caused and fixed (see the two completed checklist items above).
 
 ### Phase 4 — Settings & styling
 

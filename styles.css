@@ -10,11 +10,18 @@ community theme. Namespaced with the `aisr-` prefix to avoid leaks.
 */
 
 .aisr-badge-container {
-	/* Inline flex keeps badges on the title line, before the match-count flair. */
+	/* Inline flex keeps badges on the title line, before the match-count flair.
+	   min-width/Max/basis keep the container shrinkable inside the title row's
+	   flex layout so an over-long alias can't push the row out of bounds. */
 	display: inline-flex;
 	align-items: center;
 	gap: 2px;
 	margin: 0 4px;
+	max-width: 40%;
+	flex: 0 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	vertical-align: middle;
 }
 
 .aisr-badge {
@@ -25,9 +32,16 @@ community theme. Namespaced with the `aisr-` prefix to avoid leaks.
 	padding: 0 4px;
 	line-height: 1.4;
 	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	/* A single very long alias must truncate with ellipsis, not stretch the row. */
+	max-width: 100%;
 }
 
+/* Keep the "+k more" indicator always visible and never truncated. */
 .aisr-badge-more {
 	color: var(--text-faint);
 	background: transparent;
+	flex: 0 0 auto;
+	overflow: visible;
 }
