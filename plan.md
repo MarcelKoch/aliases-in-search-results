@@ -97,8 +97,8 @@ Following reviewer-preferred patterns (types, defaults, `Setting` UI, live-apply
 |---|---|
 | **0 — Spike ✅ done** | Executed — findings + DevTools verification complete, see `docs/phase0-search-internals.md` §9 and plan §9. |
 | 1 | Scaffold project, build pipeline, manifest, dev vault + Hot-Reload loop. **✅ done** — automated steps verified in this session; plugin load + Hot-Reload user-verified in dev vault. |
-| 2 | `aliasResolver` + cache with events, unit-tested. **✅ implemented+unit-tested** (23 tests green). One manual vault probe pending (see §10 Phase 2). |
-| 3 | `searchAdapter` + `renderer`: badges appear in search results, clean unload |
+| 2 | `aliasResolver` + cache with events, unit-tested. **✅ done** (23→39 tests green; manual vault probe verified). |
+| 3 | `searchAdapter` + `renderer`: badges appear in search results, clean unload. **🟡 implemented** (build/lint/unit tests green incl. row→file resolution + leak hardening); manual dev-vault checks pending. |
 | 4 | Settings tab + styles.css theming |
 | 5 | Edge cases, performance, manual QA checklist |
 | 6 | CI, packaging, docs (`README.md` with screenshots), release |
@@ -124,24 +124,12 @@ A phase is complete only when **all** of its listed checks pass. Checkmarks belo
 - [x] `npm test` runs the empty vitest suite (CI-ready green baseline). *(Verified: 2 tests pass via an obsidian runtime stub.)*
 - [x] Directory layout matches the architecture in §3 (module stubs exist and typecheck). *(Verified: `src/{main,settings,aliasResolver,cache,renderer,searchAdapter}.ts` all present and typecheck.)*
 
-### Phase 2 — Alias resolution & cache
+### Phase 2 — Alias resolution & cache ✅
 
 - [x] Unit tests pass for: single-string alias, array alias, empty array, empty strings, whitespace-only entries, duplicates, malformed frontmatter (aliases not a string/array), alias on a file without frontmatter. *(Verified: 13 tests in `test/aliasResolver.test.ts`.)*
 - [x] Unit tests pass for cache index maintenance: `changed`/`resolve` recompute, `rename` moves entry, `delete` removes entry, full rebuild on `resolved`. *(Verified: 8 tests in `test/cache.test.ts`, incl. basename-ambiguity never-guess and basename-change-on-rename.)*
-- [ ] Index correctness verified manually: edit aliases in a note → index reflects it within one metadata event; `console`-verified count matches number of files with aliases in the vault. *(Needs user run in dev vault — the cache is built+event-wired; provide a console probe below.)*
+- [x] Index correctness verified manually: edit aliases in a note → index reflects it within one metadata event; `console`-verified count matches number of files with aliases in the vault. *(User-verified in dev vault.)*
 - [x] No full-vault rescan happens on single-file metadata events (asserted by test spy). *(Verified: `rebuild` spy asserts 0 calls across recompute/move/remove.)*
-
-**Manual probe to finish Phase 2 (user-required):**
-```js
-// In the dev vault with the plugin enabled, run one search, then:
-const p = app.plugins.plugins['aliases-in-search-results'];
-const c = p?.cache?.size ?? -1;
-const withAliases = app.vault.getMarkdownFiles().filter(f => app.metadataCache.getFileCache(f)?.frontmatter?.aliases).length;
-console.log('cache.size =', c, '| files w/ aliases =', withAliases);
-// Edit a note's frontmatter aliases (add/remove one), then:
-console.log('after edit, getAliases =', p.cache.getAliases('<path-of-edited-note>.md'));
-```
-Expect: `cache.size` equals the number of markdown files (both indexes track path→aliases regardless of alias presence; `hasAnyAliases()` is the emptiness switch), and `getAliases('<edited>')` reflects the change right after the metadata `changed` event fires (no plugin reload).
 
 ### Phase 3 — Badges in search results
 
@@ -152,7 +140,10 @@ Expect: `cache.size` equals the number of markdown files (both indexes track pat
 - [ ] Manual: plugin disable → all `[data-aisr]` elements removed; re-enable → they return. Reload of Obsidian with plugin enabled: no errors, no duplicates.
 - [ ] Manual: with "Style Tags in Search Results" enabled simultaneously, both plugins' effects coexist without errors.
 - [ ] Zero uncaught exceptions in the console across the above (adapter degrades silently if `resultDomLookup` is temporarily unavailable — verify by observing badges still appear via basename fallback).
-- [ ] Unit test: row→file resolution logic (shape-check accept/reject paths) with mocked internals.
+- [x] Unit test: row→file resolution logic (shape-check accept/reject paths) with mocked internals. *(Verified: 10 tests in `test/searchAdapter.test.ts` — `extractFilePath` (accept `{file}`, arrays, reject malformed) and `buildElementPathMap` (accept valid map, reject non-Element key, reject unprefixed value, allow empty).)*
+- [x] Memory-leak hardening: removed rows are `unobserve`d from the per-leaf IntersectionObserver on re-render/container swap (`BoundLeaf.observedRows` + `unobserveRow`), and teardown disconnects observers and cancels pending rAF. *(Structural fix — runtime stability still covered by the Phase 5 repeated-search memory check.)*
+
+**Phase 3 status:** automated/unit checks complete (build, lint, 39 tests green incl. the row→file resolution unit test). The manual checks above (badges visible, virtualization, idempotency, never-guess, disable cleanup, coexistence, zero uncaught exceptions) still need a dev-vault run to confirm.
 
 ### Phase 4 — Settings & styling
 

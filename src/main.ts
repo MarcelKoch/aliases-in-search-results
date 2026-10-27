@@ -19,8 +19,8 @@ export default class AliasesInSearchResultsPlugin extends Plugin {
 		this.cache = new AliasCache(this.app.vault, this.app.metadataCache);
 		this.cache.rebuild(this.app.vault.getMarkdownFiles());
 
-		// Search adapter: binds to core Search leaves (empty until Phase 3).
-		this.adapter = new SearchAdapter(this.app.workspace, this.cache);
+		// Search adapter: binds to core Search leaves (decorates with badges).
+		this.adapter = new SearchAdapter(this.app.workspace, this.cache, this.settings);
 		this.adapter.attach();
 
 		// Settings tab.

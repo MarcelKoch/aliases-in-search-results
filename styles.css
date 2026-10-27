@@ -1,9 +1,33 @@
 /*
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+This CSS file will be included with your plugin, and available in the app when
+your plugin is enabled.
 
-Alias badge styles for the search results are added here
-in Phase 4 (Settings & styling). See plan.md §4.
+Alias badges in the core search result title rows. Styling uses Obsidian CSS
+variables only (no hardcoded colors) so badges adapt to light/dark and any
+community theme. Namespaced with the `aisr-` prefix to avoid leaks.
 
 */
+
+.aisr-badge-container {
+	/* Inline flex keeps badges on the title line, before the match-count flair. */
+	display: inline-flex;
+	align-items: center;
+	gap: 2px;
+	margin: 0 4px;
+}
+
+.aisr-badge {
+	background: var(--background-modifier-hover);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	border-radius: var(--radius-s);
+	padding: 0 4px;
+	line-height: 1.4;
+	white-space: nowrap;
+}
+
+.aisr-badge-more {
+	color: var(--text-faint);
+	background: transparent;
+}
