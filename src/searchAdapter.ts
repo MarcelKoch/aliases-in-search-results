@@ -372,13 +372,16 @@ export class SearchAdapter {
 export function buildElementPathMap(map: Map<unknown, unknown>): Map<Element, string> | null {
 	const byElement = new Map<Element, string>();
 	for (const [key, value] of map.entries()) {
+		// Skip stray/sentinel keys that aren't DOM elements (Obsidian may keep a
+		// non-Element entry in the map). Blanking the whole map on one such key
+		// would lose Tier-1 for every row in the leaf — visible for same-basename
+		// rows, which then fall to the ambiguous basename fallback and lose their
+		// badges even though their real key is a perfectly good Element.
 		if (!(key instanceof Element)) {
-			return null;
+			continue;
 		}
 		const path = extractFilePath(value);
 		if (path !== null) {
-			// A same-basename row may map to several candidate files; only keep
-			// it when `extractFilePath` is confident about a single file.
 			byElement.set(key, path);
 		}
 	}

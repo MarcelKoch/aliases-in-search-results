@@ -62,9 +62,21 @@ describe('buildElementPathMap (shape-check accept/reject)', () => {
 		expect(result!.get(b)).toBe('b.md');
 	});
 
-	it('rejects when any key is not an Element', () => {
-		const map = new Map<unknown, unknown>([['not-an-element', { file: { path: 'a.md' } }]]);
-		expect(buildElementPathMap(map)).toBeNull();
+	it('skips non-Element keys instead of blanking the whole map', () => {
+		const a = new FakeElement();
+		const map = new Map<unknown, unknown>([
+			['sentinel-entry', { file: { path: 'a.md' } }],
+			[a, { file: { path: 'a.md' } }],
+		]);
+		const result = buildElementPathMap(map);
+		expect(result).not.toBeNull();
+		expect(result!.get(a)).toBe('a.md');
+	});
+
+	it('returns an empty map when every key is non-Element (caller falls back)', () => {
+		const map = new Map<string, unknown>([['x', { file: { path: 'a.md' } }]]);
+		const result = buildElementPathMap(map as unknown as Map<unknown, unknown>);
+		expect(result).toEqual(new Map());
 	});
 
 	it('keeps the valid rows even when another row value yields no path', () => {
