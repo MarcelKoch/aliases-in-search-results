@@ -1,0 +1,17 @@
+# REUSE compliance (https://reuse.software/)
+# SPDX-FileCopyrightText: 2026 Marcel Koch
+# SPDX-License-Identifier: 0BSD
+
+version = 1
+
+SPDX-PackageName = "aliases-in-search-results"
+SPDX-PackageSupplier = "Marcel Koch"
+
+# The whole project is released under the 0BSD license (see LICENSES/0BSD.txt).
+# Rather than adding a comment header to every file, this root annotation
+# assigns the license and its copyright holder to the whole project tree.
+[[annotations]]
+path = "**"
+precedence = "closest"
+SPDX-FileCopyrightText = "2026 Marcel Koch"
+SPDX-License-Identifier = "0BSD"

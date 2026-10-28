@@ -13,6 +13,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # License/REUSE compliance (https://reuse.software): verifies every file
+      # carries the 0BSD license + copyright info via LICENSES/0BSD.txt and
+      # REUSE.toml. Uses the official FSFE action (v6 = REUSE spec 3.x).
+      - name: REUSE lint
+        uses: fsfe/reuse-action@v6
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:

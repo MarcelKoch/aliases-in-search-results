@@ -119,5 +119,11 @@ git push && git push --tags
 The `Release` GitHub Action builds and uploads `main.js`, `manifest.json`, and
 `styles.css` from the tag.
 
+## License
+
+This plugin is licensed under the [BSD Zero Clause License (0BSD)](/LICENSE).
+See `LICENSES/0BSD.txt` for the canonical text. The project follows
+[REUSE](https://reuse.software/) conventions; `reuse lint` is enforced in CI.
+
 See `docs/plan.md` for the full implementation plan and per-phase verification, and
 `docs/` for the search-internals and QA documentation.
