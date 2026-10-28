@@ -1,6 +1,6 @@
 {
 	"name": "aliases-in-search-results",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Show the aliases of a note in the Obsidian core search results.",
 	"main": "main.js",
 	"type": "module",
