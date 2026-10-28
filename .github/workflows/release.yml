@@ -1,0 +1,45 @@
+name: Release
+
+# Create a GitHub release from a version tag (`npm version patch && git push --tags`).
+# The release uploads exactly the three assets a community install needs:
+# main.js, manifest.json, styles.css.
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run checks (lint + tests + build)
+        run: |
+          npm run lint
+          npm test
+          npm run build
+
+      - name: Sync versions.json from the tag
+        run: node version-bump.mjs
+        env:
+          npm_package_version: ${{ github.ref_name }}
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            main.js
+            manifest.json
+            styles.css
+          generate_release_notes: true

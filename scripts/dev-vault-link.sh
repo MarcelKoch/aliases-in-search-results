@@ -17,6 +17,8 @@ VAULT="${1:?Usage: scripts/dev-vault-link.sh <vault-path>}"
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 PLUGIN_DIR="$VAULT/.obsidian/plugins/aliases-in-search-results"
 
+mkdir -p "$VAULT/.obsidian/plugins"
+
 # Symlink the folder so the built files resolve into the repo.
 if [ -L "$PLUGIN_DIR" ]; then
 	echo "Plugin folder already symlinked -> $(readlink "$PLUGIN_DIR")"

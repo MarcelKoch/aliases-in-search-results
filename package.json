@@ -8,6 +8,8 @@
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"version": "node version-bump.mjs && git add manifest.json versions.json",
+		"release:check": "node scripts/check-release.mjs",
+		"release:prepare": "npm run lint && npm test && npm run build && npm run release:check",
 		"lint": "eslint .",
 		"test": "vitest run"
 	},

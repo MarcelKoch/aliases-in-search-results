@@ -7,50 +7,117 @@ of each note next to its filename in the **core Search** results:
 ▸ Daily Meeting Notes      [standup] [team-sync]
 ```
 
+Instead of switching on a result to discover which note it is, you can see each
+note's aliases right in the result list.
+
 ## Features
 
-- Displays the alias(es) from each note's frontmatter in the built-in Search results.
-- Understands both a single-string and an array `aliases` value.
-- Degrades gracefully: ambiguous filenames (duplicate basenames) show no badge
-  rather than risk a wrong alias.
-- Skips results for notes with no aliases entirely (zero overhead for vaults
-  without aliases).
-- Works on desktop and mobile.
+- Displays the `aliases` from each note's frontmatter in the built-in Search
+  results, right after the note title.
+- Starts with the notes that already match your query — it is purely a display
+  enhancement; it never changes *which* results are returned.
+- Supports both single-string (`aliases: standup`) and array
+  (`aliases: [standup, team-sync]`) forms, YAML lists, and malformed entries are
+  ignored safely.
+- **Display styles**: compact badge pills, or comma-separated inline text.
+- **Truncation**: shows up to a configurable number of aliases, with a `+k` hint
+  when there are more (first alias is never cut off).
+- **Query-match highlight**: optionally emphasise aliases that contain the
+  current search query.
+- Degrades gracefully: when two files share a basename, the row is **not**
+  given a badge rather than risk attaching the wrong note's alias (never-guess).
+- No work at all when the vault has no aliases (O(1) early exit — zero overhead).
+- Works on desktop and mobile (`isDesktopOnly: false`).
+
+> **Note:** this plugin annotates results rather than matching aliases. Making
+> Search actually match aliases is a deeper change and is out of scope for v1.
+
+## Screenshots
+
+_Screenshot to be added — capture and place `docs/screenshots/badges.png` and
+`docs/screenshots/settings.png` before the first release._
+
+- `docs/screenshots/badges.png` — search results showing badge pills.
+- `docs/screenshots/settings.png` — the plugin settings tab.
 
 ## Install
 
-This plugin is under development and not yet published to the community plugin
-catalog. To try it:
+### From a GitHub release (recommended)
 
-1. Build: `npm install && npm run build`
-2. Copy `main.js` and `manifest.json` (and `styles.css` when present) to
-   `<your-vault>/.obsidian/plugins/aliases-in-search-results/`
-3. Enable **Settings → Community plugins → Aliases in Search Results**.
+1. Download the latest release assets: `main.js`, `manifest.json`,
+   `styles.css`.
+2. Put them all three into `<your-vault>/.obsidian/plugins/aliases-in-search-results/`
+   (create the folders if needed).
+3. Restart Obsidian (or enable via **Settings → Community plugins** → reload) and
+   toggle **Aliases in Search Results** on.
 
-For development, run `scripts/dev-vault-link.sh <vault-path>` to symlink the
+### Via BRAT
+
+1. Install and enable the ["BRAT"](https://github.com/TfTHacker/obsidian42-brat)
+   community plugin.
+2. Run **Add a beta plugin**, enter this repository, and enable it.
+
+### Manual (from source)
+
+1. `git clone` this repo and `cd` into it.
+2. `npm install && npm run build`
+3. Copy `main.js`, `manifest.json`, and `styles.css` into
+   `<your-vault>/.obsidian/plugins/aliases-in-search-results/`.
+4. Enable the plugin in Obsidian (**Settings → Community plugins**).
+
+For local development, run `scripts/dev-vault-link.sh <vault-path>` to symlink the
 vault's plugin folder to this repo, then `npm run dev` for watch-mode builds.
 
 ## Settings
 
-Settings are populated in a later milestone (see `plan.md` §4). The current
-scaffold exposes a single toggle and persists it via the standard
-`loadData`/`saveData` API.
+Settings live in **Settings → Community plugins → Aliases in Search Results**.
+They take effect immediately — no plugin reload needed.
 
-## Compatibility note
+| Setting | Type | Default | Description |
+|---|---|---|---|
+| Show aliases in search results | Toggle | On | Master switch. When off, search rows are left untouched. |
+| Display style | Badges / Inline text | Badges | Pills after the title, or muted comma-separated text. |
+| Max aliases per result | Slider (0–10) | 3 | How many aliases to show before a `+k` indicator. |
+| Highlight aliases matching the query | Toggle | Off | Emphasise aliases that contain the current search query. |
 
-Obsidian's core Search view has no official customization API. This plugin
-observes the rendered search-results DOM and, to map a result row back to its
-note file, reads an internal member of the Search view
-(`view.dom.resultDomLookup`) with a strict runtime shape-check, falling back to
-a basename-uniqueness index built from the official `metadataCache` API. All
-fragile internals access is isolated to `src/searchAdapter.ts`. If Obsidian
-changes those internals, the plugin degrades silently rather than throwing.
+The settings search box (Obsidian 1.13+) can find these options.
 
-## Development
+## Compatibility note (fragile internals)
+
+Obsidian's core Search view has **no official customization API**. This plugin:
+
+- observes the rendered search-results DOM with a `MutationObserver` +
+  `IntersectionObserver` (batching work via `requestAnimationFrame`), and
+- to map a result row back to its note file, reads an internal member of the
+  Search view (`view.dom.vChildren._children`, with a legacy
+  `resultDomLookup` fallback) under a strict runtime shape-check, falling back
+  to a basename-uniqueness index built from the official `metadataCache` API.
+
+All fragile-internals access is isolated to a single module,
+`src/searchAdapter.ts`. If Obsidian changes those internals, the plugin
+**degrades silently** (rows simply get no badge) rather than throwing or
+corrupting the search view. Clean unload removes every injected element and
+disposes observers, so disabling leaves no residue.
+
+## For contributors
 
 - `npm run dev` — watch-mode esbuild (outputs `main.js`).
 - `npm run build` — type-check (strict) + production bundle.
-- `npm run lint` — ESLint (Obsidian-specific rules via `eslint-plugin-obsidianmd`).
-- `npm test` — Vitest unit tests (aliases and settings come first).
+- `npm run lint` — ESLint with Obsidian-specific rules
+  (`eslint-plugin-obsidianmd`).
+- `npm test` — Vitest unit tests (alias resolution, cache, renderer, adapter,
+  edge-cases/performance).
 
-See `plan.md` for the full implementation plan and per-phase verification.
+### Releasing
+
+```bash
+npm version patch --no-git-tag-version   # or minor/major; syncs package.json + manifest.json + versions.json
+git commit -am "chore: release vX.Y.Z"
+git push && git push --tags
+```
+
+The `Release` GitHub Action builds and uploads `main.js`, `manifest.json`, and
+`styles.css` from the tag.
+
+See `plan.md` for the full implementation plan and per-phase verification, and
+`docs/` for the search-internals and QA documentation.

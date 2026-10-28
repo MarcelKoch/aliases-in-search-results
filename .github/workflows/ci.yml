@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+      # Final gate: version consistency (package.json/manifest.json/versions.json)
+      # + required release assets exist, so a merge can never leave a broken tag.
+      - name: Release-readiness check
+        run: node scripts/check-release.mjs
+
+      # Export the exact artifact set that a community install/release needs, so
+      # a PR can never drift the release assets out of sync with main.
+      - name: Upload release assets (main.js, manifest.json, styles.css)
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: |
+            main.js
+            manifest.json
+            styles.css
+          if-no-files-found: error
