@@ -22,6 +22,12 @@ export class AliasCache {
 	private readonly byPath = new Map<string, string[]>();
 	/** basename -> set of file paths sharing that basename */
 	private readonly byBasename = new Map<string, Set<string>>();
+	/**
+	 * Cached "does any file have >=1 alias" flag, kept incrementally true/recomputed
+	 * so the search adapter's early-exit is O(1) instead of scanning every file in
+	 * the vault for each rendered row.
+	 */
+	private hasAliases = false;
 
 	constructor(vault: Vault, metadataCache: MetadataCache) {
 		this.vault = vault;
@@ -32,15 +38,30 @@ export class AliasCache {
 	rebuild(files: TFile[]): void {
 		this.byPath.clear();
 		this.byBasename.clear();
+		this.hasAliases = false;
 		for (const file of files) {
 			this.setFile(file, aliasesFromCache(file, this.metadataCache));
 		}
 	}
 
-	/** Insert or update a single file (create or metadata change). */
+	/**
+	 * Insert or update a single file (create or metadata change). Maintains the
+	 * O(1) `hasAliases` flag: when a file *gains* aliases the flag is set true;
+	 * when aliases are *cleared* we rescan (rare — only on a metadata change that
+	 * empties a previously-aliased file, not on per-row rendering).
+	 */
 	setFile(file: TFile, aliases: string[]): void {
+		const hadAliases = (this.byPath.get(file.path) ?? []).length > 0;
+		const nowHasAliases = aliases.length > 0;
 		this.byPath.set(file.path, aliases);
 		this.indexBasename(file.basename, file.path);
+		if (nowHasAliases) {
+			this.hasAliases = true;
+		} else if (hadAliases && this.hasAliases) {
+			// The flag could only flip to false after this file lost its last
+			// alias; rescan to confirm no other file still carries aliases.
+			this.hasAliases = this.scanHasAliases();
+		}
 	}
 
 	/** Recompute aliases for a single file from the metadata cache. */
@@ -50,8 +71,14 @@ export class AliasCache {
 
 	/** Remove a file entirely (delete). */
 	remove(file: TFile): void {
+		const hadAliases = (this.byPath.get(file.path) ?? []).length > 0;
 		this.byPath.delete(file.path);
 		this.unindexBasename(file.basename, file.path);
+		// Rescan only when this file was carrying aliases; otherwise the O(1)
+		// flag can't have become stale. Deletes are rare, so this stays cheap.
+		if (hadAliases) {
+			this.hasAliases = this.scanHasAliases();
+		}
 	}
 
 	/**
@@ -80,9 +107,17 @@ export class AliasCache {
 
 	/**
 	 * True when the vault has at least one alias. Used as an early-exit
-	 * optimization by the search adapter (skip all work when unused).
+	 * optimization by the search adapter (skip all work when unused). O(1) via
+	 * the cached `hasAliases` flag — this is called once per rendered row, so a
+	 * full-vault scan here would be O(n) per row (1000 rows x 1000 files on a
+	 * large search) and defeat the <16ms/frame budget.
 	 */
 	hasAnyAliases(): boolean {
+		return this.hasAliases;
+	}
+
+	/** Recompute the has-any-alias flag by scanning the index (delete path). */
+	private scanHasAliases(): boolean {
 		for (const aliases of this.byPath.values()) {
 			if (aliases.length > 0) {
 				return true;

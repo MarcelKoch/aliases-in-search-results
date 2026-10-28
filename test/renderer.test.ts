@@ -36,6 +36,31 @@ describe('computeBadges (maxAliases truncation)', () => {
 			{ text: 'c', more: false },
 		]);
 	});
+
+	it('truncates a very long alias list to the cap with an accurate +k count', () => {
+		const many = Array.from({ length: 500 }, (_, i) => `alias-${i}`);
+		const badges = computeBadges(many, 3);
+		expect(badges).toEqual([
+			{ text: 'alias-0', more: false },
+			{ text: 'alias-1', more: false },
+			{ text: 'alias-2', more: false },
+			{ text: '+497', more: true },
+		]);
+	});
+
+	it('renders only a +k badge for a long list when maxAliases is 0', () => {
+		const many = Array.from({ length: 500 }, (_, i) => `alias-${i}`);
+		expect(computeBadges(many, 0)).toEqual([{ text: '+500', more: true }]);
+	});
+
+	it('handles aliases that are themselves very long strings', () => {
+		// A single very long alias must not overflow/break `computeBadges`; the
+		// CSS handles ellipsis/truncation. Logic-wise it is just a string.
+		const longAlias = 'x'.repeat(2000);
+		expect(computeBadges([longAlias], 3)).toEqual([
+			{ text: longAlias, more: false },
+		]);
+	});
 });
 
 describe('matchesTerm / shouldHighlight (query-match emphasis)', () => {

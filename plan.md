@@ -100,7 +100,7 @@ Following reviewer-preferred patterns (types, defaults, `Setting` UI, live-apply
 | 2 | `aliasResolver` + cache with events, unit-tested. **✅ done** (23→39 tests green; manual vault probe verified). |
 | 3 | `searchAdapter` + `renderer`: badges appear in search results, clean unload. **✅ done** (48 tests green; manual checks done; long-alias layout + same-name different-folder bugs fixed). |
 | 4 | Settings tab + styles.css theming. **🟡 implemented** — full declarative + imperative settings UI (`getSettingDefinitions()` clears the 1.13 settings-search lint warning), live-apply via adapter.refresh(), inline display style, query-match highlight, theme-safe CSS; build/lint clean and 52 tests green. See §10 Phase 4 for manual checks. |
-| 5 | Edge cases, performance, manual QA checklist |
+| 5 | Edge cases, performance, manual QA checklist. **🟡 implemented** — O(1) zero-alias early exit (was O(vault)/row), edge-case + simulation tests, DevTools trace not runnable by assistant. See §10 Phase 5 + `docs/phase5-qa-checklist.md`. |
 | 6 | CI, packaging, docs (`README.md` with screenshots), release |
 
 ## 10. Phase completion verification (definition of done)
@@ -160,10 +160,12 @@ A phase is complete only when **all** of its listed checks pass. Checkmarks belo
 
 ### Phase 5 — Edge cases & performance
 
-- [ ] QA checklist from §6 executed and recorded (special characters, long lists, empty search, hidden/ignored files, uninstall/reload cleanliness).
-- [ ] Performance: decorating a 1000-result search adds <16 ms per rendered frame batch; typing-latency unaffected (no layout thrash — verify via DevTools Performance trace showing no long tasks attributable to the plugin).
-- [ ] Large vault simulation: alias index build <100 ms for 1000 files; memory retained stable after 10 repeated searches (WeakMap/Map cleanup verified).
-- [ ] No plugin work at all when the vault contains zero aliases (early-exit verified by logging/breakpoint).
+- [ ] QA checklist from §6 executed and recorded (special characters, long lists, empty search, hidden/ignored files, uninstall/reload cleanliness). *(Automated ✅: special chars, long list truncation, empty-search no-op, hidden-file indexing, detach cleanup — see `test/phase5.test.ts`, `test/renderer.test.ts`, `docs/phase5-qa-checklist.md`. Manual ⬜: visual checks in the dev vault for 1a–1e.)*
+- [ ] Performance: decorating a 1000-result search adds <16 ms per rendered frame batch; typing-latency unaffected (no layout thrash — verify via DevTools Performance trace showing no long tasks attributable to the plugin). *(Automated ✅: 1000-row resolution hot path well under a frame + O(1) zero-alias early exit. Manual ⬜: DevTools Performance trace for typing latency / no long tasks.)*
+- [ ] Large vault simulation: alias index build <100 ms for 1000 files; memory retained stable after 10 repeated searches (WeakMap/Map cleanup verified). *(Automated ✅: 1000-file rebuild <100 ms; 10-round rebuild leaves index at exact file count — see `test/phase5.test.ts`. Manual ⬜: DevTools heap snapshot across live repeated searches.)*
+- [ ] No plugin work at all when the vault contains zero aliases (early-exit verified by logging/breakpoint). *(Automated ✅: O(1) `hasAnyAliases` flag; 100 000 calls over a 200 000-file index finish quickly, proving no per-row full-vault scan — a real fix, was O(vault)/row.)*
+
+**Phase 5 status:** 🟡 implemented — the key change is making the zero-alias early exit **O(1)** (was O(vault) *per rendered row*, a genuine 1000-result layout-thrash source). Added edge-case + simulation/benchmark tests (special chars, long lists, 1000-file index build, 1000-row resolution budget, repeated-search memory stability) → **66 tests green**, build + lint clean. The manual DevTools checks (typing-latency trace, live heap snapshot) and the visual QA items (1a–1e) need a dev-vault run; see `docs/phase5-qa-checklist.md`.
 
 ### Phase 6 — Release
 
