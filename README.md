@@ -119,5 +119,5 @@ git push && git push --tags
 The `Release` GitHub Action builds and uploads `main.js`, `manifest.json`, and
 `styles.css` from the tag.
 
-See `plan.md` for the full implementation plan and per-phase verification, and
+See `docs/plan.md` for the full implementation plan and per-phase verification, and
 `docs/` for the search-internals and QA documentation.

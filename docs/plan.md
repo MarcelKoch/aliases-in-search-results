@@ -62,7 +62,7 @@ This avoids hitting the metadata cache for every rendered result row (performanc
 
 **`renderer.ts`** — builds the badge element (span with class `alias-search-badge`), truncation ("+3 more"), click → open note (default already happens on the row).
 
-**`styles.css`** — minimal, namespaced classes (`alias-search-results-*`), uses Obsidian CSS variables (`--text-muted`, `--background-modifier-hover`, etc.) so it adapts to light/dark themes and base theme; no global style leaks.
+**`../styles.css`** — minimal, namespaced classes (`alias-search-results-*`), uses Obsidian CSS variables (`--text-muted`, `--background-modifier-hover`, etc.) so it adapts to light/dark themes and base theme; no global style leaks.
 
 ## 4. Settings (`settings.ts`, `PluginSettingTab`)
 
@@ -76,10 +76,10 @@ Following reviewer-preferred patterns (types, defaults, `Setting` UI, live-apply
 
 ## 5. Development workflow (current best practices)
 
-- Scaffold from `obsidianmd/obsidian-sample-plugin`: `esbuild.config.mjs` with `context.sourcemap = dev`, watch mode, externals as in the template.
+- Scaffold from `obsidianmd/obsidian-sample-plugin`: `../esbuild.config.mjs` with `context.sourcemap = dev`, watch mode, externals as in the template.
 - `npm run dev` (watch) + the **Hot-Reload** community plugin, plus a **symlinked dev vault** (`.obsidian/plugins/aliases-in-search-results` → repo build dir) so changes appear instantly without reinstalling.
 - Tooling: `eslint` + `prettier` (template defaults), `typescript` strict mode, `vitest` for the pure modules.
-- Target `manifest.minAppVersion` at the newest API your code uses; keep `versions.json` in sync per release.
+- Target `manifest.minAppVersion` at the newest API your code uses; keep `../versions.json` in sync per release.
 
 ## 6. Testing
 
@@ -88,20 +88,20 @@ Following reviewer-preferred patterns (types, defaults, `Setting` UI, live-apply
 
 ## 7. Publishing readiness
 
-- GitHub Actions workflow: lint + tests + `npm run build` on PR; release job attaches `main.js`, `manifest.json`, `styles.css` (required asset set for community plugin installs).
+- GitHub Actions workflow: lint + tests + `npm run build` on PR; release job attaches `../main.js`, `manifest.json`, `styles.css` (required asset set for community plugin installs).
 - Submission to `obsidianmd/obsidian-releases` after manual QA; follow the review guidelines from day one (no Node APIs where the Obsidian API exists, no network calls, proper unload, no console spam).
 
 ## 8. Milestones
 
 | Phase | Deliverable |
 |---|---|
-| **0 — Spike ✅ done** | Executed — findings + DevTools verification complete, see `docs/phase0-search-internals.md` §9 and plan §9. |
+| **0 — Spike ✅ done** | Executed — findings + DevTools verification complete, see `phase0-search-internals.md` §9 and plan §9. |
 | 1 | Scaffold project, build pipeline, manifest, dev vault + Hot-Reload loop. **✅ done** — automated steps verified in this session; plugin load + Hot-Reload user-verified in dev vault. |
 | 2 | `aliasResolver` + cache with events, unit-tested. **✅ done** (23→39 tests green; manual vault probe verified). |
 | 3 | `searchAdapter` + `renderer`: badges appear in search results, clean unload. **✅ done** (48 tests green; manual checks done; long-alias layout + same-name different-folder bugs fixed). |
 | 4 | Settings tab + styles.css theming. **✅ done** — full declarative + imperative settings UI (`getSettingDefinitions()` clears the 1.13 settings-search lint warning), live-apply via adapter.refresh(), inline display style, query-match highlight, theme-safe CSS; build/lint clean and 52 tests green; all manual checks user-verified. |
-| 5 | Edge cases, performance, manual QA checklist. **✅ done** — O(1) zero-alias early exit (was O(vault)/row), edge-case + simulation tests, 66 tests green; all manual QA user-verified. See §10 Phase 5 + `docs/phase5-qa-checklist.md`. |
-| 6 | CI, packaging, docs (`README.md` with screenshots), release. **🟡 implemented** — CI + release workflows, release-readiness script, rewritten README, community-submission self-review doc; version consistent across files + local tag. Remote push + fresh-vault install remain user steps (no git remote configured). |
+| 5 | Edge cases, performance, manual QA checklist. **✅ done** — O(1) zero-alias early exit (was O(vault)/row), edge-case + simulation tests, 66 tests green; all manual QA user-verified. See §10 Phase 5 + `phase5-qa-checklist.md`. |
+| 6 | CI, packaging, docs (`../README.md` with screenshots), release. **🟡 implemented** — CI + release workflows, release-readiness script, rewritten README, community-submission self-review doc; version consistent across files + local tag. Remote push + fresh-vault install remain user steps (no git remote configured). |
 
 ## 10. Phase completion verification (definition of done)
 
@@ -113,21 +113,21 @@ A phase is complete only when **all** of its listed checks pass. Checkmarks belo
 - [x] Row→file mapping strategy confirmed via DevTools (`view.dom.resultDomLookup` found, `Map`).
 - [x] Basename-uniqueness fallback measured against a real vault.
 - [x] Test badge visually injected at the chosen injection point.
-- [x] Findings written to `docs/phase0-search-internals.md` with no unresolved blockers.
+- [x] Findings written to `phase0-search-internals.md` with no unresolved blockers.
 
 ### Phase 1 — Scaffold ✅
 
 - [x] `npm install && npm run build` succeeds on a clean checkout with **zero** TypeScript errors (strict mode) and zero eslint errors. *(Verified: build exit 0; `tsc -noEmit` strict clean; `eslint .` 0 errors — 1 warning tracked to Phase 4.)*
-- [x] `manifest.json` valid: unique id, name, version, `minAppVersion`, description, author, `isDesktopOnly: false` (mobile requirement from Phase 0). *(Verified by assertion script.)*
-- [x] Built `main.js` loads in Obsidian without console errors; plugin appears in Community Plugins list; enable/disable toggles cleanly (no leftover console warnings). *(User-verified in dev vault.)*
+- [x] `../manifest.json` valid: unique id, name, version, `minAppVersion`, description, author, `isDesktopOnly: false` (mobile requirement from Phase 0). *(Verified by assertion script.)*
+- [x] Built `../main.js` loads in Obsidian without console errors; plugin appears in Community Plugins list; enable/disable toggles cleanly (no leftover console warnings). *(User-verified in dev vault.)*
 - [x] Dev vault set up via symlink; Hot-Reload reflects a trivial change (e.g., a `console.log` in `onload`) without manual reimport. *(User-verified in dev vault.)*
 - [x] `npm test` runs the empty vitest suite (CI-ready green baseline). *(Verified: 2 tests pass via an obsidian runtime stub.)*
 - [x] Directory layout matches the architecture in §3 (module stubs exist and typecheck). *(Verified: `src/{main,settings,aliasResolver,cache,renderer,searchAdapter}.ts` all present and typecheck.)*
 
 ### Phase 2 — Alias resolution & cache ✅
 
-- [x] Unit tests pass for: single-string alias, array alias, empty array, empty strings, whitespace-only entries, duplicates, malformed frontmatter (aliases not a string/array), alias on a file without frontmatter. *(Verified: 13 tests in `test/aliasResolver.test.ts`.)*
-- [x] Unit tests pass for cache index maintenance: `changed`/`resolve` recompute, `rename` moves entry, `delete` removes entry, full rebuild on `resolved`. *(Verified: 8 tests in `test/cache.test.ts`, incl. basename-ambiguity never-guess and basename-change-on-rename.)*
+- [x] Unit tests pass for: single-string alias, array alias, empty array, empty strings, whitespace-only entries, duplicates, malformed frontmatter (aliases not a string/array), alias on a file without frontmatter. *(Verified: 13 tests in `../test/aliasResolver.test.ts`.)*
+- [x] Unit tests pass for cache index maintenance: `changed`/`resolve` recompute, `rename` moves entry, `delete` removes entry, full rebuild on `resolved`. *(Verified: 8 tests in `../test/cache.test.ts`, incl. basename-ambiguity never-guess and basename-change-on-rename.)*
 - [x] Index correctness verified manually: edit aliases in a note → index reflects it within one metadata event; `console`-verified count matches number of files with aliases in the vault. *(User-verified in dev vault.)*
 - [x] No full-vault rescan happens on single-file metadata events (asserted by test spy). *(Verified: `rebuild` spy asserts 0 calls across recompute/move/remove.)*
 
@@ -140,7 +140,7 @@ A phase is complete only when **all** of its listed checks pass. Checkmarks belo
 - [x] Manual: plugin disable → all `[data-aisr]` elements removed; re-enable → they return. Reload of Obsidian with plugin enabled: no errors, no duplicates.
 - [x] ~~Manual: with "Style Tags in Search Results" enabled simultaneously, both plugins' effects coexist without errors.~~ Unnecessary
 - [x] Zero uncaught exceptions in the console across the above (adapter degrades silently if `resultDomLookup` is temporarily unavailable — verify by observing badges still appear via basename fallback).
-- [x] Unit test: row→file resolution logic (shape-check accept/reject paths) with mocked internals. *(Verified: 10 tests in `test/searchAdapter.test.ts` — `extractFilePath` (accept `{file}`, arrays, reject malformed) and `buildElementPathMap` (accept valid map, reject non-Element key, reject unprefixed value, allow empty).)*
+- [x] Unit test: row→file resolution logic (shape-check accept/reject paths) with mocked internals. *(Verified: 10 tests in `../test/searchAdapter.test.ts` — `extractFilePath` (accept `{file}`, arrays, reject malformed) and `buildElementPathMap` (accept valid map, reject non-Element key, reject unprefixed value, allow empty).)*
 - [x] Memory-leak hardening: removed rows are `unobserve`d from the per-leaf IntersectionObserver on re-render/container swap (`BoundLeaf.observedRows` + `unobserveRow`), and teardown disconnects observers and cancels pending rAF. *(Structural fix — runtime stability still covered by the Phase 5 repeated-search memory check.)*
 - [x] **Bug fix (user-reported manual run): long alias names no longer break the row layout** — `<span class="aisr-badge">` gets `max-width` + `overflow:hidden` + `text-overflow:ellipsis`, and the container gets `min-width:0`/`max-width`/`overflow:hidden` so an over-long alias trunks with ellipsis instead of stretching the title-row flex. `+k` indicator stays visible via `flex:0 0 auto` + `overflow:visible`.
 - [x] **Bug fix (user-reported manual run): aliases no longer disappear for same-named files in different folders** — root cause was a shell change: `resultDomLookup` keys are *result objects*, not DOM elements, on modern Obsidian builds, so the Element-keyed Tier-1 lookup resolved nothing and every row fell back to the basename index (ambiguous for collided basenames → no badge). Fixed by adding a `vChildren`-based Tier-1 lookup: each `view.dom.vChildren._children` entry (verified in the dev vault) carries `.file.path` **and** `.selfEl` (the rendered row element), so rows map to their exact path — including `Untitled.md` vs `Untitled/Untitled.md`. `resultDomLookup` remains a defensive legacy fallback. Never-guess rule preserved.
@@ -151,7 +151,7 @@ A phase is complete only when **all** of its listed checks pass. Checkmarks belo
 
 - [x] Settings persist across reloads; every setting takes effect immediately (no plugin reload required). *(Automated: settings tab reads/writes `plugin.settings` and triggers `adapter.refresh()` after every change via `onApplied`; `normalizeSettings` sanitizes persisted data. Manual ✅ user-verified.)*
 - [x] Toggle off → badges disappear; display style switch changes rendering; max-aliases truncation shows "+k" correctly; highlight setting highlights query-matching aliases. *(Automated: renderer honors `showAliases`, `displayStyle` badge/inline, `maxAliases` via `computeBadges`, `highlightMatches` via `shouldHighlight`/`matchesTerm`. Manual ✅ user-verified.)*
-- [x] Badges render correctly in light/dark base theme and under at least one popular community theme (CSS-variable-based styling — no hardcoded colors). *(Automated: `styles.css` uses only Obsidian CSS variables. Manual ✅ theme check user-verified.)*
+- [x] Badges render correctly in light/dark base theme and under at least one popular community theme (CSS-variable-based styling — no hardcoded colors). *(Automated: `../styles.css` uses only Obsidian CSS variables. Manual ✅ theme check user-verified.)*
 - [x] Narrow-pane / mobile layout: badges wrap or truncate without breaking the title-row flex layout (verify against the Phase 0 injection test in a narrow pane). *(Automated: `.is-mobile`/workspace-leaf max-width rules + inline-ellipsis added. Manual ✅ narrow-pane check user-verified.)*
 - [x] Declarative settings-search API: `getSettingDefinitions()` implemented (Obsidian 1.13+), plus imperative `display()` for pre-1.13 rendering — clears the previously tracked `prefer-setting-definitions` lint warning. *(Verified: lint now 0 errors + 0 warnings.)*
 - [x] **Bug fix (user-reported): same-name aliases appear only after clicking a result** — root cause was the tier-1 `vChildren` lookup being a *one-time snapshot* built at `bindLeaf` time. Same-name files are virtually/lazily rendered, so they weren't in `vChildren._children` yet when bound; when they later appeared, `resolvePath` consulted the stale map → fell through to the ambiguous basename index → no badge. Clicking re-rendered the view, rebinding and refreshing the snapshot. Fixed by `refreshTier1()`, which rebuilds the leaf's tier-1 map from the current `vChildren._children` whenever the MutationObserver detects added rows.
@@ -160,20 +160,20 @@ A phase is complete only when **all** of its listed checks pass. Checkmarks belo
 
 ### Phase 5 — Edge cases & performance
 
-- [x] QA checklist from §6 executed and recorded (special characters, long lists, empty search, hidden/ignored files, uninstall/reload cleanliness). *(Automated ✅: special chars, long list truncation, empty-search no-op, hidden-file indexing, detach cleanup — see `test/phase5.test.ts`, `test/renderer.test.ts`, `docs/phase5-qa-checklist.md`. Manual ✅: visual checks in the dev vault for 1a–1e user-verified.)*
+- [x] QA checklist from §6 executed and recorded (special characters, long lists, empty search, hidden/ignored files, uninstall/reload cleanliness). *(Automated ✅: special chars, long list truncation, empty-search no-op, hidden-file indexing, detach cleanup — see `../test/phase5.test.ts`, `test/renderer.test.ts`, `docs/phase5-qa-checklist.md`. Manual ✅: visual checks in the dev vault for 1a–1e user-verified.)*
 - [x] Performance: decorating a 1000-result search adds <16 ms per rendered frame batch; typing-latency unaffected (no layout thrash — verify via DevTools Performance trace showing no long tasks attributable to the plugin). *(Automated ✅: 1000-row resolution hot path well under a frame + O(1) zero-alias early exit. Manual ✅: DevTools Performance trace user-verified.)*
-- [x] Large vault simulation: alias index build <100 ms for 1000 files; memory retained stable after 10 repeated searches (WeakMap/Map cleanup verified). *(Automated ✅: 1000-file rebuild <100 ms; 10-round rebuild leaves index at exact file count — see `test/phase5.test.ts`. Manual ✅: DevTools heap snapshot user-verified.)*
+- [x] Large vault simulation: alias index build <100 ms for 1000 files; memory retained stable after 10 repeated searches (WeakMap/Map cleanup verified). *(Automated ✅: 1000-file rebuild <100 ms; 10-round rebuild leaves index at exact file count — see `../test/phase5.test.ts`. Manual ✅: DevTools heap snapshot user-verified.)*
 - [x] No plugin work at all when the vault contains zero aliases (early-exit verified by logging/breakpoint). *(Automated ✅: O(1) `hasAnyAliases` flag; 100 000 calls over a 200 000-file index finish quickly, proving no per-row full-vault scan — a real fix, was O(vault)/row.)*
 
-**Phase 5 status:** ✅ complete — the key change was making the zero-alias early exit **O(1)** (was O(vault) *per rendered row*, a genuine 1000-result layout-thrash source). Added edge-case + simulation/benchmark tests (special chars, long lists, 1000-file index build, 1000-row resolution budget, repeated-search memory stability) → **66 tests green**, build + lint clean. All manual dev-vault QA items (visual, DevTools perf trace + heap) user-verified; see `docs/phase5-qa-checklist.md`.
+**Phase 5 status:** ✅ complete — the key change was making the zero-alias early exit **O(1)** (was O(vault) *per rendered row*, a genuine 1000-result layout-thrash source). Added edge-case + simulation/benchmark tests (special chars, long lists, 1000-file index build, 1000-row resolution budget, repeated-search memory stability) → **66 tests green**, build + lint clean. All manual dev-vault QA items (visual, DevTools perf trace + heap) user-verified; see `phase5-qa-checklist.md`.
 
 ### Phase 6 — Release
 
-- [x] CI pipeline green: lint + unit tests + production build on every PR; release workflow attaches `main.js`, `manifest.json`, `styles.css` and a `versions.json` entry. *(Implemented: `.github/workflows/ci.yml` runs lint + tests + build + release-readiness check on every PR/push; `release.yml` builds on tag push and uploads the three assets. Workflow YAML validated. Green pipeline confirmed by `release:prepare` locally — the GitHub Actions runner requires a remote, which is not yet configured.)*
-- [ ] Install-from-release verified in a fresh test vault: download assets → plugin loads and works (this is the exact path community users take). *(User step — requires creating a GitHub release and running Obsidian; assets are verified present + version-consistent by `scripts/check-release.mjs`, but the in-app install-from-release test still needs a run.)*
-- [x] `README.md` includes usage, screenshots (search results with badges, settings), install instructions, and the "fragile internals" compatibility note. *(Rewritten: usage, features, install (release/BRAT/manual), full settings table, compatibility note. Screenshot filenames referenced but the PNGs must be captured and placed at `docs/screenshots/` before the public announcement.)*
-- [x] Community submission prerequisites reviewed against the official plugin guidelines checklist (no Node APIs beyond needs, no network calls, clean unload, no console spam) — a self-review pass recorded in the PR description. *(Verified: `docs/community-submission-review.md` records the pass; grep confirms no network calls, no console output, no Node built-ins in `src/`.)*
-- [x] Git tags + GitHub release created; version in `manifest.json`, `package.json`, and `versions.json` consistent. *(Consistency verified at 0.1.0 across all three files by `check-release.mjs`. A local tag is created; the GitHub release itself requires pushing — user step, no remote configured.)*
+- [x] CI pipeline green: lint + unit tests + production build on every PR; release workflow attaches `../main.js`, `manifest.json`, `styles.css` and a `versions.json` entry. *(Implemented: `.github/workflows/ci.yml` runs lint + tests + build + release-readiness check on every PR/push; `release.yml` builds on tag push and uploads the three assets. Workflow YAML validated. Green pipeline confirmed by `release:prepare` locally — the GitHub Actions runner requires a remote, which is not yet configured.)*
+- [ ] Install-from-release verified in a fresh test vault: download assets → plugin loads and works (this is the exact path community users take). *(User step — requires creating a GitHub release and running Obsidian; assets are verified present + version-consistent by `../scripts/check-release.mjs`, but the in-app install-from-release test still needs a run.)*
+- [x] `../README.md` includes usage, screenshots (search results with badges, settings), install instructions, and the "fragile internals" compatibility note. *(Rewritten: usage, features, install (release/BRAT/manual), full settings table, compatibility note. Screenshot filenames referenced but the PNGs must be captured and placed at `docs/screenshots/` before the public announcement.)*
+- [x] Community submission prerequisites reviewed against the official plugin guidelines checklist (no Node APIs beyond needs, no network calls, clean unload, no console spam) — a self-review pass recorded in the PR description. *(Verified: `community-submission-review.md` records the pass; grep confirms no network calls, no console output, no Node built-ins in `src/`.)*
+- [x] Git tags + GitHub release created; version in `../manifest.json`, `package.json`, and `versions.json` consistent. *(Consistency verified at 0.1.0 across all three files by `check-release.mjs`. A local tag is created; the GitHub release itself requires pushing — user step, no remote configured.)*
 
 **Phase 6 status:** 🟡 implemented — CI + release workflows, release-readiness script, rewritten README, community-submission self-review doc all in place; `release:prepare` green. Remaining user steps (no git remote configured here): configure the remote + push + `git push --tags` to trigger the release workflow, capture screenshots, and run one install-from-release test in a fresh vault.
 
@@ -181,7 +181,7 @@ The riskiest unknown is Phase 0 (exact hook point into the private Search view),
 
 ## 9. Phase 0 outcome (executed — complete)
 
-Findings: see `docs/phase0-search-internals.md` — confirmed DOM structure, injection point (badge between `.tree-item-inner` and `.tree-item-flair-outer`), and lazy/virtualized rendering (MutationObserver + IntersectionObserver + rAF batching, validated against the shipped "Style Tags in Search Results" plugin).
+Findings: see `phase0-search-internals.md` — confirmed DOM structure, injection point (badge between `.tree-item-inner` and `.tree-item-flair-outer`), and lazy/virtualized rendering (MutationObserver + IntersectionObserver + rAF batching, validated against the shipped "Style Tags in Search Results" plugin).
 
 DevTools verification (user-run, 2 rounds) closed the remaining unknowns:
 
