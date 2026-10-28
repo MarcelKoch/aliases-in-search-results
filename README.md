@@ -113,11 +113,13 @@ disposes observers, so disabling leaves no residue.
 ```bash
 npm version patch --no-git-tag-version   # or minor/major; syncs package.json + manifest.json + versions.json
 git commit -am "chore: release vX.Y.Z"
+git tag -s -a "vX.Y.Z" -m "Release vX.Y.Z"
 git push && git push --tags
 ```
 
 The `Release` GitHub Action builds and uploads `main.js`, `manifest.json`, and
-`styles.css` from the tag.
+`styles.css` from the tag. A draft release is created, but not published. The 
+final release is published manually.
 
 ## License
 
